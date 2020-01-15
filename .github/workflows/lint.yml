@@ -32,7 +32,6 @@ jobs:
 
       - name: Return main path
         run: |
-          cd ../..
           ls
       
       - name: push
