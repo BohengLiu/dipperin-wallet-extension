@@ -45,6 +45,8 @@ jobs:
       #     force-add: 'false'
       #     name: Github Action
       #     email: it@dipperin.io 
+      - name: Add changes to Git tracking
+        run: git add -A .
     
       - name: Commit changes
         with: gha-utilities/workspace-commit@v0.0.2
