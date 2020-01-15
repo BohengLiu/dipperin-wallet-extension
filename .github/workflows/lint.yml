@@ -27,13 +27,10 @@ jobs:
 
       - name: Run linters
         run: |
-          ls
+          git checkout ${{ steps.vars.outputs.branch }}
           cd packages/popup
           yarn fix
           cd ../..
-
-      - name: Return main path
-        run: ls
       
       # - name: push
       #   uses: github-actions-x/commit@v2.3
@@ -46,13 +43,15 @@ jobs:
       #     name: Github Action
       #     email: it@dipperin.io 
       - name: Add changes to Git tracking
-        run: git add -A .
+        run: |
+          git add -A .
+          git commit -am 'lint'
     
-      - name: Commit changes
-        uses: gha-utilities/workspace-commit@v0.0.2
-        with:
-          message: 'lint'
-          all: true
+      # - name: Commit changes
+      #   uses: gha-utilities/workspace-commit@v0.0.2
+      #   with:
+      #     message: 'lint'
+      #     all: true
 
       - name: Push changes
         uses: ad-m/github-push-action@master
