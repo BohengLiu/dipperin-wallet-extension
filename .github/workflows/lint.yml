@@ -35,13 +35,24 @@ jobs:
       - name: Return main path
         run: ls
       
-      - name: push
-        uses: github-actions-x/commit@v2.3
-        if: startsWith(github.event.ref, 'refs/heads/')
+      # - name: push
+      #   uses: github-actions-x/commit@v2.3
+      #   if: startsWith(github.event.ref, 'refs/heads/')
+      #   with:
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #     push-branch: ${{ steps.vars.outputs.branch }}
+      #     commit-message: 'lint'
+      #     force-add: 'false'
+      #     name: Github Action
+      #     email: it@dipperin.io 
+    
+      - name: Commit changes
+        with: gha-utilities/workspace-commit@v0.0.2
+          message: Updates compiled site files
+          all: true
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          push-branch: ${{ steps.vars.outputs.branch }}
-          commit-message: 'lint'
-          force-add: 'false'
-          name: Github Action
-          email: it@dipperin.io 
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.vars.outputs.branch }}
