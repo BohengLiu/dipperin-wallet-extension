@@ -48,7 +48,7 @@ jobs:
     
       - name: Commit changes
         with: gha-utilities/workspace-commit@v0.0.2
-          message: Updates compiled site files
+          message: lint
           all: true
 
       - name: Push changes
