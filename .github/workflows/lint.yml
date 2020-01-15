@@ -27,12 +27,13 @@ jobs:
 
       - name: Run linters
         run: |
+          ls
           cd packages/popup
           yarn fix
+          cd ../..
 
       - name: Return main path
-        run: |
-          ls
+        run: ls
       
       - name: push
         uses: github-actions-x/commit@v2.3
