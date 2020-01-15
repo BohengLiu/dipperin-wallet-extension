@@ -1,6 +1,6 @@
 import { Host } from '@dipperin/lib/duplex'
 import { requestHandle } from '@dipperin/lib/utils'
-import Consola from 'consola'
+// import Consola from 'consola'
 import HandleService from './handleService'
 import BackgroundAPI from './api/background'
 import {
@@ -18,12 +18,13 @@ import {
   GET_MNEMONIC,
   CHANGE_ACTIVE_ACCOUNT,
   GET_ACTIVE_ACCOUNT,
-  GET_MIN_TRANSACTION_FEE,
+  // GET_MIN_TRANSACTION_FEE,
   SEND_TRANSACTION,
   GET_TRANSACTIONS,
   UPDATE_ACCOUNT_NAME,
   RESET_WALLET,
   APP_APPROVE,
+  SIGN_MESSAGE,
   IS_APPROVED,
   GET_ACTIVE_ACCOUNT_ADDRESS,
   CHNAGE_ACTIVE_ACCOUNT,
@@ -34,15 +35,24 @@ import {
   GET_APP_TX,
   SET_PASSWORD,
   CHANGE_NET,
-  GET_CURRENT_NET
+  GET_CURRENT_NET,
+  GET_APP_NAME,
+  UPDATE_ACCOUNT_LOCK_BALANCE,
+  GET_ESTIMATE_GAS,
+  GET_PRIVATE_KEY,
+  IMPORT_PRIVATE_KEY,
+  GET_SIGNING_MESSAGE,
+  CONFIRM_SIGN_MESSAGE
 } from '@dipperin/lib/constants'
-import { AccountBalanceParams } from '@dipperin/lib/models/account'
+import { AccountBalanceParams, AccountLockBalanceParams } from '@dipperin/lib/models/account'
 import { TxStatusParams } from '@dipperin/lib/models/transaction'
 import { addWhiteList, isApproved } from './storage'
 
-const log = Consola.withTag('background-script').create({
-  level: 5
-})
+import { backgroundLog as log } from '@dipperin/lib/log'
+
+// const log = Consola.withTag('background-script').create({
+//   level: 5
+// })
 
 class BackgroundScript {
   appName?: string
@@ -59,7 +69,7 @@ class BackgroundScript {
   }
 
   run() {
-    log.debug('background script init')
+    log.info('background script init')
     this.bindPopupDuplex()
     this.bindTabDuplex()
     this.bindServiceEvent()
@@ -67,12 +77,12 @@ class BackgroundScript {
 
   private bindPopupDuplex() {
     this.duplex.on('popup:connect', () => {
-      log.debug('popup connect')
+      log.info('popup connect')
       this.service.popupConnect()
     })
 
     this.duplex.on('popup:disconnect', () => {
-      log.debug('popup disconnect')
+      log.info('popup disconnect')
       this.service.popupDisconnect()
     })
 
@@ -89,18 +99,25 @@ class BackgroundScript {
     this.duplex.on(CHANGE_ACTIVE_ACCOUNT, this.service.changeActiveAccount)
     this.duplex.on(UPDATE_ACCOUNT_NAME, this.service.updateAccountName)
     this.duplex.on(DELETE_ACCOUNT, this.service.deleteAccount)
-    this.duplex.on(GET_MIN_TRANSACTION_FEE, this.service.getMinTxFee)
+    // this.duplex.on(GET_MIN_TRANSACTION_FEE, this.service.getMinTxFee)
+    this.duplex.on(GET_ESTIMATE_GAS, this.service.getEstimateGas)
     this.duplex.on(SEND_TRANSACTION, this.service.sendTx)
     this.duplex.on(GET_TRANSACTIONS, this.service.getTxs)
     this.duplex.on(RESET_WALLET, this.service.resetWallet)
     this.duplex.on(APP_SEND, this.service.appSendTx)
     this.duplex.on(CHANGE_NET, this.service.changeNet)
     this.duplex.on(GET_CURRENT_NET, this.service.getCurrentNet)
+    this.duplex.on(GET_APP_NAME, this.service.getAppName)
+    this.duplex.on(GET_PRIVATE_KEY, this.service.getPrivateKey)
+    this.duplex.on(IMPORT_PRIVATE_KEY, this.service.importAccount)
+    this.duplex.on(GET_SIGNING_MESSAGE, this.service.getSignMessage)
+    this.duplex.on(CONFIRM_SIGN_MESSAGE, this.service.signMessage)
     /**
      * for app event
      */
     this.duplex.on(APP_APPROVE, this.approveConfirm.bind(this))
     this.duplex.on(GET_APP_TX, this.getAppTx.bind(this))
+    // this.duplex.on(SIGN_MESSAGE, this.sign)
   }
 
   private bindTabDuplex() {
@@ -131,6 +148,10 @@ class BackgroundScript {
           this.send(data, resolve, uuid)
           break
         }
+        case SIGN_MESSAGE: {
+          this.signMessage(data, resolve, uuid)
+          break
+        }
         default:
           resolve({
             success: false,
@@ -151,6 +172,10 @@ class BackgroundScript {
     // update account balance
     this.service.on(UPDATE_ACCOUNT_BALANCE, (params: AccountBalanceParams) => {
       this.api.updateAccountBalance(params)
+    })
+
+    this.service.on(UPDATE_ACCOUNT_LOCK_BALANCE, (param: AccountLockBalanceParams) => {
+      this.api.updateAccountLockBalance(param)
     })
 
     // update tx status
@@ -196,6 +221,7 @@ class BackgroundScript {
    */
   private async approve(appName: string, resolve, uuid: string) {
     this.appName = appName
+    this.service.appName = appName
     const res: ApproveRes = {
       popupExist: !!this.popupId,
       isHaveWallet: this.service.isHaveWallet,
@@ -224,6 +250,46 @@ class BackgroundScript {
   }
 
   /**
+   * signMessage
+   * @param appName
+   * @param resolve
+   * @param uuid
+   */
+  private async signMessage(data: { appName: string; signMessage: string }, resolve, uuid: string) {
+    this.appName = data.appName
+    this.service.appName = data.appName
+    const res: ApproveRes = {
+      popupExist: !!this.popupId,
+      isHaveWallet: this.service.isHaveWallet,
+      isUnlock: this.service.isUnlock
+    }
+
+    if (!res.isHaveWallet || !res.isUnlock || this.popupId) {
+      resolve({
+        success: false,
+        data: res,
+        uuid
+      })
+      return
+    }
+    this.service.setAppSate(APP_STATE.SIGN_MESSAGE)
+    this.service.setSignMessage(data.signMessage)
+    await this.openPopup()
+    if (this.service.getSignedMessage()) {
+      res.info = this.service.getSignedMessage()
+    }
+    this.service.clearSignedMessage()
+    // if (!approved) {
+    //   res.info = 'approved filed!'
+    // }
+    resolve({
+      success: true,
+      data: res.info,
+      uuid
+    })
+  }
+
+  /**
    * popup confirm approve
    */
   private approveConfirm() {
@@ -235,6 +301,7 @@ class BackgroundScript {
     this.api.approveSuccess(params)
     console.log(params)
     this.appName = undefined
+    this.service.appName = undefined
     // close popup by id
     if (this.popupId) {
       chrome.windows.remove(this.popupId)
@@ -335,10 +402,17 @@ class BackgroundScript {
         this.popupId = window.id
       }
     )
+    chrome.windows.onFocusChanged.addListener(newWindowId => {
+      if (newWindowId > 0 && !!this.popupId && newWindowId !== this.popupId) {
+        log.debug(`window change to ${newWindowId}, current popupId is ${this.popupId}`)
+        chrome.windows.remove(this.popupId as number)
+      }
+    })
     chrome.windows.onRemoved.removeListener(this.windowRemoveListener)
     await new Promise(resolve => {
       this.windowRemoveListener = (id: number) => {
-        console.log('listener', id, this.popupId)
+        log.debug(`windowRemoveLister: the closed window is ${id}, popup is ${this.popupId}`)
+        // console.log('listener', id, this.popupId)
         if (id === this.popupId) {
           this.popupId = undefined
           this.service.setAppStateToHome()
@@ -347,6 +421,11 @@ class BackgroundScript {
       }
       chrome.windows.onRemoved.addListener(this.windowRemoveListener)
     })
+  }
+
+  getAppName = (): string => {
+    console.log('appName: ' + this.appName)
+    return this.appName
   }
 }
 

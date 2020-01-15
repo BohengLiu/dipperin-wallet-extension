@@ -3,14 +3,19 @@ import { observable, action, autorun, computed } from 'mobx'
 import { observer, inject } from 'mobx-react'
 
 import Account from '@/stores/account'
+import Label from '@/stores/label'
 import Tooltip from '@/components/tooltip'
 import { genAvatar } from '@/utils'
+// image
+import WhiteLock from '@/images/whiteLock.png'
 
 interface AccountInfoProps {
   account?: Account
+  label?: Label
+  showDetail: () => void
 }
 
-@inject('account')
+@inject('account', 'label')
 @observer
 class AccountInfo extends React.Component<AccountInfoProps> {
   @observable
@@ -39,11 +44,17 @@ class AccountInfo extends React.Component<AccountInfoProps> {
     this.accountName = e.target.value
   }
 
+  @action
+  updateName = (name: string) => {
+    this.accountName = name
+  }
+
   constructor(props) {
     super(props)
     // this.props.account!.updateAccountStore()
     autorun(() => {
-      this.accountName = this.props.account!.activeAccount.name
+      // this.accountName = this.props.account!.activeAccount.name
+      this.updateName(this.props.account!.activeAccount.name)
     })
   }
 
@@ -77,7 +88,8 @@ class AccountInfo extends React.Component<AccountInfoProps> {
 
   changeAccountName = () => {
     if (!this.verifyAccountName) {
-      alert('The account name is limited to 10 characters or 20 letter.')
+      // TODO: use tooltip
+      alert(this.props.label!.label.account.accountName)
       this.accountName = this.props.account!.activeAccount.name
       return
     }
@@ -107,9 +119,7 @@ class AccountInfo extends React.Component<AccountInfoProps> {
     input.select()
     if (document.execCommand('copy')) {
       document.execCommand('copy')
-      // TODO: add alert to tell user Replicating Success
       this.showTooltip()
-      // alert('Replicating Success!')
     }
     document.body.removeChild(input)
   }
@@ -144,22 +154,39 @@ class AccountInfo extends React.Component<AccountInfoProps> {
     }, 2000)
   }
 
+  formatNumber = (num: string, w: number) => {
+    const rex = new RegExp(`[0-9]*\.?[0-9]{0,${w}}`)
+    const fNum = rex.exec(num) ? rex.exec(num) : '0'
+    const nNum = Number(fNum)
+    const m = 10 ** w
+    const b = Math.floor(nNum * m) / m
+    return b.toLocaleString('zh-Hans', {
+      maximumFractionDigits: w
+    })
+  }
+
   render() {
     const activeAccount = this.props.account!.activeAccount
-    const copyTip = 'Replicating Success!'
+    const copyTip = this.props.label!.label.account.copySuccess
     return (
       <div className="accounts-content">
         <div className="accounts-id-box">
           {/* <span className="accounts-id">{activeAccount.id}</span> */}
-          <img className="accounts-avatar" src={genAvatar(activeAccount.address, 80)} alt="" />
+          <img
+            className="accounts-avatar"
+            src={genAvatar(activeAccount.address, 80)}
+            alt=""
+            onClick={this.props.showDetail}
+            draggable={false}
+          />
         </div>
 
         <div className="accounts-name-box">
           {!this.inputAccount && (
             <Fragment>
-              <span className="accounts-name-nothing" />
+              {/* <span className="accounts-name-nothing" /> */}
               <span className="accounts-name">{this.accountName ? this.accountName : activeAccount.name}</span>
-              <span className="accounts-name-icon" onClick={this.openInputAccount} />
+              {/* <span className="accounts-name-icon" onClick={this.openInputAccount} /> */}
             </Fragment>
           )}
           {this.inputAccount && (
@@ -179,8 +206,26 @@ class AccountInfo extends React.Component<AccountInfoProps> {
         </div>
 
         <div className="accounts-balance-box">
-          <span className="accounts-balance">{`${activeAccount.balance} DIP`}</span>
+          {/* <span className="accounts-balance">{`${activeAccount.balance} DIP`}</span> */}
+          <span
+            className="accounts-balance"
+            title={`${Number(activeAccount.balance).toLocaleString('zh-Hans', {
+              maximumFractionDigits: 18
+            })} DIP`}
+          >{`${this.formatNumber(activeAccount.balance, 6)} DIP`}</span>
         </div>
+
+        {activeAccount.lockBalance && activeAccount.lockBalance !== '0' && (
+          <div className="accounts-lockbalance-box">
+            <img src={WhiteLock} />
+            <span
+              className="accounts-lockbalance"
+              title={`${Number(activeAccount.lockBalance).toLocaleString('zh-Hans', {
+                maximumFractionDigits: 18
+              })} DIP`}
+            >{` ${this.formatNumber(activeAccount.lockBalance, 6)} DIP`}</span>
+          </div>
+        )}
 
         <div className="accounts-address-box">
           <span className="accounts-name-nothing" />

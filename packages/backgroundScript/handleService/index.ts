@@ -1,6 +1,6 @@
 import EventEmitter from 'eventemitter3'
-import Dipperin from '@dipperin/dipperin.js'
-import Consola from 'consola'
+import Dipperin, { Accounts } from '@dipperin/dipperin.js'
+// import Consola from 'consola'
 import {
   // HOST,
   APP_STATE,
@@ -13,28 +13,31 @@ import {
   CHNAGE_ACTIVE_ACCOUNT,
   SEND_SUCCESS,
   NET_HOST_OBJ,
-  REMOTE_MECURY
+  // REMOTE_MECURY,
+  REMOTE_VENUS
   // REMOTE_TEST
 } from '@dipperin/lib/constants'
 import WalletStore from '../store/wallet'
 import AccountStore from '../store/account'
 import TimerStore from '../store/timer'
 import TxStore from '../store/transaction'
-import { AccountObj, AccountBalanceParams, AccountNameParams } from '@dipperin/lib/models/account'
+import { AccountObj, AccountBalanceParams, AccountNameParams, AccountType } from '@dipperin/lib/models/account'
 import { TxStatusParams, TransactionObj, SendTxParams } from '@dipperin/lib/models/transaction'
 import { ImportParams } from '@dipperin/lib/models/wallet'
 import { clear } from '../storage'
 import { SendParms } from '../backgroundScript'
+import { backgroundLog as log } from '@dipperin/lib/log'
 
-const log = Consola.withTag('background-script').create({
-  level: 5
-})
+// const log = Consola.withTag('background-script').create({
+//   level: 5
+// })
 
 class RootStore extends EventEmitter {
   sendData?: SendParms // app send tx data (appName & tx)
+  appName: string | undefined = undefined
   private _isConnecting: boolean = false
   private _appState: number = APP_STATE.HAS_NO_WALLET
-  private _currentNet: string = REMOTE_MECURY
+  private _currentNet: string = REMOTE_VENUS
   private _dipperin: Dipperin
   private _wallet: WalletStore
   private _account: AccountStore
@@ -42,6 +45,9 @@ class RootStore extends EventEmitter {
   private _disconnectTimestamp: number
   private _timer: TimerStore
   private _interval: NodeJS.Timeout
+  private _signMessage: string
+  private _signedMessage: string
+
   constructor() {
     super()
     const net = this._currentNet
@@ -72,10 +78,12 @@ class RootStore extends EventEmitter {
   get activeAccount() {
     return this._account.activeAccount
   }
+
   async load() {
     const res = await this._wallet.load()
     this.initAppState()
-    console.log(this._appState, 'load')
+    log.debug(`load appState: ${this._appState}`)
+    // console.log(this._appState, 'load')
     if (res) {
       await this._account.load()
       // FIXME: if account can be deleted or net changed, tx should be reloaded after adding an account
@@ -84,9 +92,9 @@ class RootStore extends EventEmitter {
     }
   }
 
-  async getCurrentBlock(): Promise<number> {
+  async getCurrentBlock(): Promise<any> {
     const res = await this._dipperin.dr.getCurrentBlock()
-    console.log(res)
+    log.debug('Current Block:', res)
     return res
   }
 
@@ -103,7 +111,8 @@ class RootStore extends EventEmitter {
       const nowTimeStamp = new Date().valueOf()
       const timeDiff = nowTimeStamp - this._disconnectTimestamp
       if (timeDiff > AUTO_LOCK_WALLET) {
-        console.log('lock', AUTO_LOCK_WALLET)
+        log.debug(`lock`, AUTO_LOCK_WALLET)
+        // console.log('lock', AUTO_LOCK_WALLET)
         clearInterval(this._interval)
         this._wallet.lockWallet()
         this.initAppState()
@@ -190,14 +199,15 @@ class RootStore extends EventEmitter {
   /**
    * import wallet
    */
-  importWallet(params: ImportParams): Promise<string> | void {
+  async importWallet(params: ImportParams): Promise<string | void> {
     const res = this._wallet.create(params.password, params.mnemonic)
     if (res) {
       return Promise.reject(res.message)
     }
     // start update after import wallet success
     this.startUpdate()
-    this._account.initAccount(this._wallet.hdAccount)
+    await this._account.initImportAccount(this._wallet.hdAccount)
+    return Promise.resolve('import success')
   }
 
   /**
@@ -249,7 +259,7 @@ class RootStore extends EventEmitter {
    */
   changeActiveAccount(id: string) {
     this._account.changeActiveAccount(id)
-    this._tx.reload(this._account.accounts)
+    // this._tx.reload(this._account.accounts)
   }
 
   updateAccountName(params: AccountNameParams) {
@@ -267,8 +277,13 @@ class RootStore extends EventEmitter {
    * get min tx fee
    * @param tx: address, amount, memo
    */
-  getMinTxFee(tx: SendTxParams): string {
-    return this._tx.getTransactionFee(this._account.activeAccount, tx)
+  // getMinTxFee(tx: SendTxParams): string {
+  //   return this._tx.getTransactionFee(this._account.activeAccount, tx)
+  // }
+
+  async getEstimateGas(tx: SendTxParams): Promise<string> {
+    const estimateGas = await this._tx.getEstimateGas(this._wallet.hdAccount, this._account.activeAccount, tx)
+    return estimateGas
   }
 
   /**
@@ -285,20 +300,16 @@ class RootStore extends EventEmitter {
   /**
    * app send tx
    */
-  async appSendTx(txFee: string): Promise<string | void> {
-    const tx: SendTxParams = {
-      address: this.sendData.to,
-      amount: this.sendData.value,
-      memo: this.sendData.extraData,
-      fee: txFee
-    }
+
+  async appSendTx(tx: SendTxParams): Promise<string | void> {
     const res = await this._tx.confirmTransaction(
       this._wallet.hdAccount,
       this._account.activeAccount,
       tx,
       this.sendData.uuid
     )
-    console.log(res, 'service, res')
+    log.debug(res)
+    // console.log(res, 'service, res')
     if (!res.success) {
       return Promise.reject(res.info)
     }
@@ -325,6 +336,31 @@ class RootStore extends EventEmitter {
   resetWallet() {
     this.clear()
     this.setAppSate(APP_STATE.HAS_NO_WALLET)
+  }
+
+  getPrivateKey(password: string): string {
+    const accountPath = this._account.activeAccount.path
+    const hdAccount = this._wallet.checkPasswork(password)
+    if (!hdAccount) {
+      log.debug(`Can't get private key!`)
+      return ''
+    }
+    const privateKey = hdAccount.derivePath(accountPath).privateKey
+    // log.debug('Get private key!', privateKey)
+    const result = AccountStore.getAccountPrivate(this._account.activeAccount, privateKey)
+    return result
+  }
+
+  importAccount(priv: string) {
+    const hdAccount = this._wallet.hdAccount
+    // log.debug(`import account from ${priv}`)
+    try {
+      this._account.importAccount(hdAccount, priv)
+      return true
+    } catch (e) {
+      log.error(e)
+      return false
+    }
   }
 
   /***** service end */
@@ -382,7 +418,9 @@ class RootStore extends EventEmitter {
     this._account.updateBanlance()
     this._account.updateNonce()
     this._timer.asyncOn(TIMER.UPDATE_BALANCE, this._account.updateBanlance.bind(this._account), 5000)
+    this._timer.asyncOn(TIMER.UPDATE_LOCK_BALANCE, this._account.updateAddressLockMoney.bind(this._account), 5000)
     this._timer.asyncOn(TIMER.UPDATE_NONCE, this._account.updateNonce.bind(this._account), 30000)
+    // this._timer.asyncOn(TIMER.UPDATE_BLOCK, this.getCurrentBlock.bind(this), 5000)
     // tx start update
     this._tx.updateTransactionStatus()
     this._timer.asyncOn(TIMER.UPDATE_TX_STATUS, this._tx.updateTransactionStatus.bind(this._account), 5000)
@@ -419,6 +457,42 @@ class RootStore extends EventEmitter {
 
   getCurrentNet = () => {
     return this._currentNet
+  }
+
+  getAppName = () => {
+    return this.appName
+  }
+
+  getSignMessage = () => {
+    return this._signMessage
+  }
+
+  setSignMessage = (msg: string) => {
+    this._signMessage = msg
+  }
+
+  signMessage = () => {
+    let activeAccountPrivateKey: string
+    log.info('activeAccount', this._account.activeAccount)
+    if (this._account.activeAccount.type === AccountType.hd) {
+      const activeAccountPath = this._account.activeAccount.path
+      activeAccountPrivateKey = this._wallet.hdAccount.derivePath(activeAccountPath).privateKey
+    } else {
+      const path = this._account.activeAccount.path
+      const psw = this._wallet.hdAccount.derivePath(path).privateKey
+      activeAccountPrivateKey = Accounts.decrypt(this._account.activeAccount.encryptKey, psw).seed
+    }
+    const signedMessage = Accounts.sign(this._signMessage, activeAccountPrivateKey).signature
+    this._signedMessage = signedMessage
+  }
+
+  getSignedMessage = () => {
+    return this._signedMessage
+  }
+
+  clearSignedMessage = () => {
+    this._signMessage = ''
+    this._signedMessage = ''
   }
 
   async reload() {

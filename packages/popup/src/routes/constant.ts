@@ -11,6 +11,8 @@ import Auth from '@/containers/auth'
 import SetPassword from '@/containers/setPassword'
 import Backup from '@/containers/backup'
 import BackupConfirm from '@/containers/backupConfirm'
+import TxRecord from '@/containers/txRecord'
+import SignMessage from '@/containers/signMessage'
 
 import { APP_STATE } from '@dipperin/lib/constants'
 
@@ -26,7 +28,9 @@ const {
   BACKUP_CONFIRM,
   CREATE_ACCOUNT_PAGE,
   DAPP_SEND_PAGE,
-  DAPP_AUTH
+  DAPP_AUTH,
+  TX_RECORD,
+  SIGN_MESSAGE
 } = APP_STATE
 
 export const COMPONENT_DIC = {
@@ -41,5 +45,7 @@ export const COMPONENT_DIC = {
   [DAPP_AUTH]: Auth,
   [SET_PASSWORD]: SetPassword,
   [BACKUP_PAGE]: Backup,
-  [BACKUP_CONFIRM]: BackupConfirm
+  [BACKUP_CONFIRM]: BackupConfirm,
+  [TX_RECORD]: TxRecord,
+  [SIGN_MESSAGE]: SignMessage
 }
