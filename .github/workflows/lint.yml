@@ -29,6 +29,7 @@ jobs:
         run: |
           cd packages/popup
           yarn fix
+          cd ../..
       
       - name: push
         uses: github-actions-x/commit@v2.3
