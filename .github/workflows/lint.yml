@@ -49,7 +49,7 @@ jobs:
         run: git add -A .
     
       - name: Commit changes
-        use: gha-utilities/workspace-commit@v0.0.2
+        uses: gha-utilities/workspace-commit@v0.0.2
         with:
           message: 'lint'
           all: true
