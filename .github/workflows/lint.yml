@@ -35,13 +35,20 @@ jobs:
       - name: Return main path
         run: ls
       
-      - name: push
-        uses: github-actions-x/commit@v2.3
-        if: startsWith(github.event.ref, 'refs/heads/')
+      # - name: push
+      #   uses: github-actions-x/commit@v2.3
+      #   if: startsWith(github.event.ref, 'refs/heads/')
+      #   with:
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #     push-branch: ${{ steps.vars.outputs.branch }}
+      #     commit-message: 'lint'
+      #     force-add: 'false'
+      #     name: Github Action
+      #     email: it@dipperin.io 
+      - name: Commit changed files
+        uses: stefanzweifel/git-auto-commit-action@v2.5.0
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          push-branch: ${{ steps.vars.outputs.branch }}
-          commit-message: 'lint'
-          force-add: 'false'
-          name: Github Action
-          email: it@dipperin.io 
+          commit_message: lint
+          branch: ${{ github.head_ref }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
