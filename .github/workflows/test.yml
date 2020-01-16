@@ -18,10 +18,10 @@ jobs:
       - name: Install dependencies
         run: yarn
 
-      # - name: Run popup tests
-      #   run: |
-      #     cd packages/popup/
-      #     yarn test:ci
+      - name: Run popup tests
+        run: |
+          cd packages/popup/
+          yarn test:ci
     
       # - name: Run background tests
       #   run: |

@@ -43,11 +43,18 @@ jobs:
       #     name: Github Action
       #     email: it@dipperin.io 
       - name: Add changes to Git tracking
+        id: git_commit
         run: |
           git config --global user.email "it@dipperin.io"
           git config --global user.name "Github Action"
-          git add -A .
-          git commit -am 'lint'
+          changes=$(git status -s | wc -l)
+          echo ::set-output name=changes::$changes
+          echo $changes
+          if [ "$changes" -gt "0" ] ; then
+            echo "commit"
+            git add -A .
+            git commit -am 'lint'
+          fi
     
       # - name: Commit changes
       #   uses: gha-utilities/workspace-commit@v0.0.2
@@ -57,6 +64,7 @@ jobs:
 
       - name: Push changes
         uses: ad-m/github-push-action@master
+        if: steps.git_commit.outputs.changes > 0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ steps.vars.outputs.branch }}
