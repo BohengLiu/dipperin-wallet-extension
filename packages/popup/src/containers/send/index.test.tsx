@@ -121,11 +121,6 @@ describe('Send', () => {
     })
   })
 
-  it('translateErrorInfo', () => {
-    const res = instance.translateErrorInfo('ResponseError: Returned error: "tx nonce is invalid"')
-    expect(res).toBe('Your action is too frequent, please try 10s later.')
-  })
-
   it('sendTransfer', async () => {
     jest.useFakeTimers()
     transaction.verifyTx = jest.fn(() => {

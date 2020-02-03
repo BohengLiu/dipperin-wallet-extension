@@ -12,7 +12,7 @@ import Layout from '@/stores/layout'
 import NavHeader from '@/components/navHeader'
 import Modal from '@/components/modal'
 
-import { verifyNumber, formatAmount, validateAddress } from '@/utils'
+import { verifyNumber, formatAmount, validateAddress, translateErrorInfo } from '@/utils'
 
 import './sendStyle.css'
 
@@ -161,24 +161,6 @@ class Send extends React.Component<SendProps> {
     }
   }
 
-  translateErrorInfo = (error: string): string => {
-    const send = this.props.label!.label.send
-    const frequent = [
-      'ResponseError: Returned error: "this transaction already in tx pool"',
-      'ResponseError: Returned error: "tx nonce is invalid"'
-    ]
-    if (frequent.includes(error)) {
-      return send.errorFrequent
-    }
-    if (String(error).includes('InvalidConnectionError') || String(error).includes('Network Error')) {
-      return send.networkError
-    }
-    if (error === 'ResponseError: Returned error: "new fee is too low to replace old one"') {
-      return send.lowFee
-    }
-    return send.errorFrequent
-  }
-
   sendTransfer = async () => {
     const sendLabel = this.props.label!.label.send
     if (!validateAddress(this.sendToAddress)) {
@@ -202,7 +184,7 @@ class Send extends React.Component<SendProps> {
       } catch (e) {
         log.error('send-handleTransfer:', e)
         this.props.layout!.handleCloseLoading(() => {
-          this.showMsg(this.translateErrorInfo(e as string))
+          this.showMsg(translateErrorInfo(e as string, this.props.label!.label))
         })
       }
     } else {

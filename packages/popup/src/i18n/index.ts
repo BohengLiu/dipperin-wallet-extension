@@ -48,7 +48,10 @@ export const zhCN = {
     errorBalance: '账户余额不足',
     sendSuccess: '交易发送成功，请等待同步!',
     errorFrequent: '您的操作过于频繁，请10秒后再尝试操作！',
-    lowFee: '当前网络繁忙，请提高手续费或等待10秒后再操作！',
+    alreadyInTxPool: '此交易已经进入交易池，请等待！',
+    invalidNonce: '请等待账号nonce值同步后发送交易!',
+    lowFee: '请等待上笔交易上链后发送或提高交易费!',
+    networkError: '当前网络不可用，请检查网络',
     invalidAddress: '地址格式不正确',
     officialAddress: '官方地址',
     betAmount: '下注金额',
@@ -59,8 +62,7 @@ export const zhCN = {
     currentAddress: '当前地址',
     message: '加密信息',
     sign: '签名',
-    cancel: '取消',
-    networkError: '网络异常'
+    cancel: '取消'
   },
   wallet: {
     importWallet: '导入钱包',
@@ -146,7 +148,6 @@ export const enUS: I18nCollection = {
     errorBalance: 'Insufficient balance',
     sendSuccess: 'Send Success, please wait for synchronization!',
     errorFrequent: 'Your action is too frequent, please try 10s later.',
-    lowFee: 'Net is busy，please increase poundage or try 10s later',
     officialAddress: 'official address',
     betAmount: 'Bet Amount',
     betNumber: 'Bet Number',
@@ -157,7 +158,10 @@ export const enUS: I18nCollection = {
     message: 'Message',
     sign: 'Sign',
     cancel: 'Cancel',
-    networkError: 'Network Error'
+    alreadyInTxPool: 'This transaction has already come into transaction pool, please wait for a moment!',
+    invalidNonce: 'Please wait for the account synchronize the nonce number!',
+    lowFee: 'Please wait until the last transaction finishes!',
+    networkError: 'The network connection is abnormal, please check your network！'
   },
   wallet: {
     importWallet: 'Import Wallet',

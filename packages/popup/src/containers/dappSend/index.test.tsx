@@ -6,6 +6,7 @@ import Account from '@/stores/account'
 import Transaction from '@/stores/transaction'
 import { mockApi } from '@/tests/mock/api'
 import Label from '@/stores/label'
+import { translateErrorInfo } from '@/utils'
 
 import DappSend from './index'
 
@@ -154,11 +155,6 @@ describe('DappSend', () => {
     expect(instance.gas).toBe('1000000')
   })
 
-  it('translateErrorInfo', () => {
-    const res = instance.translateErrorInfo('ResponseError: Returned error: "tx nonce is invalid"')
-    expect(res).toBe('Your action is too frequent, please try 10s later.')
-  })
-
   it('sendTransfer', async () => {
     const spyOnShowMsg = jest.spyOn(instance, 'showMsg')
     transaction.verifyTx = jest.fn(() => {
@@ -178,7 +174,7 @@ describe('DappSend', () => {
     })
     transaction.sendTxForApp = jest.fn().mockRejectedValue('error')
     await instance.sendTransfer()
-    expect(spyOnShowMsg.mock.calls[0][0]).toBe(instance.translateErrorInfo('error'))
+    expect(spyOnShowMsg.mock.calls[0][0]).toBe(translateErrorInfo('error', label.label))
   })
 
   it('sendTransfer tx err', async () => {

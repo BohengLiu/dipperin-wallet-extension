@@ -1,5 +1,6 @@
 import Identicon from 'identicon.js'
 import { Utils } from '@dipperin/dipperin.js'
+import { I18nCollection } from '@/i18n'
 
 export const genAvatar = (address: string | undefined, size?: number) => {
   const hashData = address || '0000000000000000'
@@ -61,4 +62,21 @@ export const sleep = (time: number) => {
       resolve()
     }, time)
   })
+}
+
+export const translateErrorInfo = (error: string, label: I18nCollection): string => {
+  const send = label.send
+  if (error.includes('this transaction already in tx pool')) {
+    return send.alreadyInTxPool
+  }
+  if (error.includes(`tx nonce is invalid`)) {
+    return send.invalidNonce
+  }
+  if (error.includes('fee is too low to replace old one')) {
+    return send.lowFee
+  }
+  if (error.includes('CONNECTION ERROR')) {
+    return send.networkError
+  }
+  return send.errorFrequent
 }

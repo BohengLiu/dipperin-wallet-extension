@@ -10,7 +10,7 @@ import Label from '@/stores/label'
 
 import NavHeader from '@/components/navHeader'
 import Modal from '@/components/modal'
-import { verifyNumber } from '@/utils'
+import { verifyNumber, translateErrorInfo } from '@/utils'
 import './dappSendStyle.css'
 
 import { APP_STATE } from '@dipperin/lib/constants'
@@ -55,7 +55,7 @@ class DappSend extends React.Component<DappSendProps> {
     modalMsg: '',
     show: false
   }
-  timer: NodeJS.Timeout
+  timer: NodeJS.Timer
 
   @computed
   get fee() {
@@ -193,21 +193,6 @@ class DappSend extends React.Component<DappSendProps> {
     }
   }
 
-  translateErrorInfo = (error: string): string => {
-    const send = this.props.label!.label.send
-    const frequent = [
-      'ResponseError: Returned error: "this transaction already in tx pool"',
-      'ResponseError: Returned error: "tx nonce is invalid"'
-    ]
-    if (frequent.includes(error)) {
-      return send.errorFrequent
-    }
-    if (error === 'ResponseError: Returned error: "new fee is too low to replace old one"') {
-      return send.lowFee
-    }
-    return send.errorFrequent
-  }
-
   sendTransfer = async () => {
     const tx = this.genTx(this.sendToAddress, this.sendAmount, this.gasPrice)
     const res = this.props.transaction!.verifyTx(tx)
@@ -218,7 +203,7 @@ class DappSend extends React.Component<DappSendProps> {
         this.showMsg(this.props.label!.label.send.sendSuccess, this.closeWindow)
       } catch (e) {
         log.error('send-handleTransfer:', e)
-        this.showMsg(this.translateErrorInfo(e as string))
+        this.showMsg(translateErrorInfo(e as string, this.props.label!.label))
       }
     } else {
       this.showMsg(res.info as string)
